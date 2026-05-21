@@ -296,6 +296,20 @@ def admin_login(admin: AdminLogin):
         "token_type": "bearer"
     }
 
+@app.get("/cities", response_model=list[CityResponse])
+def get_cities(db: Session = Depends(get_db)):
+    return db.query(City).all()
+
+@app.get("/cities/{city_id}/areas",response_model=list[AreaResponse])
+def get_areas_by_city(
+    city_id: int,
+    db: Session = Depends(get_db)
+):
+    return (
+        db.query(Area)
+        .filter(Area.city_id == city_id)
+        .all()
+    )
 @app.post("/admin/cities", response_model=CityResponse)
 def add_city(city: CityCreate, db: Session = Depends(get_db)):
 
