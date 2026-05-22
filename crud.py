@@ -36,21 +36,34 @@ def get_user_by_email(
 
 #     return new_user
 
+# def create_user(db: Session, user: User):
+#     # Truncate password to 72 bytes BEFORE hashing
+#     truncated_password = user.password[:72]
+#     password = hash_password(truncated_password)
+    
+#     db_user = User(
+#         email=user.email,
+#         password=hashed_password,  # ✅ CORRECT
+#         # ... other fields
+#     )
+#     db.add(db_user)
+#     db.commit()
+#     db.refresh(db_user)
+#     return db_user
 def create_user(db: Session, user: User):
-    # Truncate password to 72 bytes BEFORE hashing
     truncated_password = user.password[:72]
     hashed_password = hash_password(truncated_password)
     
     db_user = User(
         email=user.email,
-        password=hashed_password,  # ✅ CORRECT
+        password=hashed_password,
+        name=user.name,  # ✅ ADD THIS - make sure UserCreate has a name field
         # ... other fields
     )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     return db_user
-
 def get_all_users(db: Session):
 
     return db.query(User).all()
