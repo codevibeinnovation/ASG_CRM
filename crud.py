@@ -23,11 +23,10 @@ def create_user(
 ):
 
     new_user = User(
-        name=user.name,
-        email=user.email,
-        phone=user.phone,
-        password=hash_password(user.password)
-    )
+    name=user.name,
+    email=user.email,
+    password=hash_password(user.password)
+)
 
     db.add(new_user)
 

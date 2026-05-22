@@ -2,13 +2,11 @@ from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional
 from datetime import date, time
 
-class SignupSchema(BaseModel):
+class UserCreate(BaseModel):
 
     name: str
 
     email: EmailStr
-
-    phone: str
 
     password: str
 
@@ -29,8 +27,6 @@ class UserResponse(BaseModel):
     name: str
 
     email: EmailStr
-
-    phone: str
 
     class Config:
 

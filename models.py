@@ -14,9 +14,7 @@ class User(Base):
 
     email = Column(String, unique=True, nullable=False)
 
-    phone = Column(String(10))
-
-    password = Column(String, nullable=True)
+    password = Column(String, nullable=False)
 
 class Client(Base):
     __tablename__ = "clients"

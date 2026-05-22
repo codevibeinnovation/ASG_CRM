@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException,Request
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
+from fastapi.middleware.cors import CORSMiddleware
 
 from database import (
     engine,
@@ -14,16 +15,11 @@ from crud import *
 from auth_config import verify_password
 
 from jwt_token import create_access_token
-from authlib.integrations.starlette_client import OAuth
 
 from fastapi.responses import RedirectResponse
 
 from auth import (
-    CLIENT_ID,
-    CLIENT_SECRET,
-    GOOGLE_REDIRECT_URI,
     SECRET_KEY,
-    ALGORITHM,
     ADMIN_EMAIL, 
     ADMIN_PASSWORD
 )
@@ -33,25 +29,15 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=SECRET_KEY
 )
-oauth = OAuth()
-
-oauth.register(
-    name="google",
-
-    client_id=CLIENT_ID,
-
-    client_secret=CLIENT_SECRET,
-
-    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
-
-    client_kwargs={
-        "scope": "openid email profile"
-    }
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 Base.metadata.create_all(bind=engine, checkfirst=True)
-
-
 
 def get_db():
 
@@ -71,30 +57,6 @@ def home():
         "message": "ASG CRM Running"
     }
 
-
-@app.post("/signup")
-def signup(
-    user: SignupSchema,
-    db: Session = Depends(get_db)
-):
-
-    existing_user = get_user_by_email(
-        db,
-        user.email
-    )
-
-    if existing_user:
-
-        raise HTTPException(
-            status_code=400,
-            detail="Email already registered"
-        )
-
-    create_user(db, user)
-
-    return {
-        "message": "User created successfully"
-    }
 
 @app.get(
     "/users",
@@ -146,64 +108,29 @@ def login(
         "access_token": access_token,
         "token_type": "bearer"
     }
-
-@app.get("/login/google")
-async def login_google(request: Request):
-
-    redirect_uri = request.url_for("google_callback")
-
-    return await oauth.google.authorize_redirect(
-        request,
-        redirect_uri
-    )
-
-@app.get("/auth/google/callback")
-async def google_callback(
-    request: Request,
+@app.post("/admin/users")
+def create_employee(
+    user: UserCreate,
     db: Session = Depends(get_db)
 ):
 
-    token = await oauth.google.authorize_access_token(request)
-
-    user_info = token.get("userinfo")
-
-    email = user_info["email"]
-
-    name = user_info["name"]
-
-    user = db.query(User).filter(User.email == email).first()
-
-    # Create user if not exists
-    if not user:
-
-        user = User(
-            name=name,
-            email=email,
-            phone="",
-            password=""
-        )
-
-        db.add(user)
-
-        db.commit()
-
-        db.refresh(user)
-
-    # Create JWT token
-    access_token = create_access_token(
-        data={
-            "sub": user.email
-        }
+    existing_user = get_user_by_email(
+        db,
+        user.email
     )
 
+    if existing_user:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Email already exists"
+        )
+
+    new_user = create_user(db, user)
+
     return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": {
-            "id": user.id,
-            "name": user.name,
-            "email": user.email
-        }
+        "message": "Employee created successfully",
+        "user": new_user
     }
 
 @app.post("/clients", response_model=ClientResponse)
