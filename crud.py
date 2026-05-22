@@ -43,7 +43,7 @@ def create_user(db: Session, user: User):
     
     db_user = User(
         email=user.email,
-        hashed_password=hashed_password,
+        password=hashed_password,  # ✅ CORRECT
         # ... other fields
     )
     db.add(db_user)
