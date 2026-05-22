@@ -41,17 +41,22 @@ def get_all_users(db: Session):
     return db.query(User).all()
 
 def create_client(db, client):
+
     new_client = Client(
         pharmacy_name=client.pharmacy_name,
         contact_person=client.contact_person,
         Mobile_No=client.Mobile_No,
         email=client.email,
+        lead_source=client.lead_source,
+        address=client.address,
         city_id=client.city_id,
         area_id=client.area_id
     )
 
     db.add(new_client)
+
     db.commit()
+
     db.refresh(new_client)
 
     return new_client
@@ -77,15 +82,16 @@ def update_client(db, client_id: int, updated_data):
     client.contact_person = updated_data.contact_person
     client.Mobile_No = updated_data.Mobile_No
     client.email = updated_data.email
+    client.lead_source = updated_data.lead_source
+    client.address = updated_data.address
     client.city_id = updated_data.city_id
     client.area_id = updated_data.area_id
 
     db.commit()
+
     db.refresh(client)
 
     return client
-
-from models import Client
 
 def delete_client(db, client_id: int):
 

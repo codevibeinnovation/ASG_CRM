@@ -37,6 +37,8 @@ class ClientCreate(BaseModel):
     contact_person: Optional[str] = None
     Mobile_No: str
     email: Optional[str] = None
+    lead_source: Optional[str] = None
+    address: Optional[str] = None
     city_id: int
     area_id: int
 
@@ -84,7 +86,8 @@ class ClientResponse(BaseModel):
     contact_person: Optional[str]
     Mobile_No: str
     email: Optional[str]
-
+    lead_source: Optional[str] = None
+    address: Optional[str] = None
     city_id: int
     area_id: int
 
@@ -111,7 +114,6 @@ class CallLogCreate(BaseModel):
 
     existing_product_id: Optional[int] = None
 
-    lead_source: Optional[str] = None
 
     lead_status: str
 
@@ -126,7 +128,7 @@ class CallLogResponse(BaseModel):
 
     existing_product_id: Optional[int]
 
-    lead_source: Optional[str]
+
 
     lead_status: str
 
@@ -141,4 +143,47 @@ class CallLogResponse(BaseModel):
     existing_product: Optional[ExistingProductResponse]
 
     class Config:
+        from_attributes = True
+
+class DemoCreate(BaseModel):
+
+    client_id: int
+
+    assigned_employee: str
+
+    demo_date: date
+
+    demo_time: time
+
+    demo_feedback: Optional[str] = None
+
+    meeting_notes: Optional[str] = None
+
+    demo_status: str
+
+
+class DemoResponse(BaseModel):
+
+    id: int
+
+    client_id: int
+
+    assigned_employee: str
+
+    demo_date: date
+
+    demo_time: time
+
+    demo_feedback: Optional[str]
+
+    meeting_notes: Optional[str]
+
+    demo_status: str
+
+    created_date: date
+
+    created_time: time
+
+    class Config:
+
         from_attributes = True

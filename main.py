@@ -494,3 +494,157 @@ def get_latest_call_log(
         )
 
     return latest_log
+
+@app.post(
+    "/demos",
+    response_model=DemoResponse
+)
+def create_demo(
+    demo: DemoCreate,
+    db: Session = Depends(get_db)
+):
+
+    new_demo = Demo(
+        client_id=demo.client_id,
+        assigned_employee=demo.assigned_employee,
+        demo_date=demo.demo_date,
+        demo_time=demo.demo_time,
+        demo_feedback=demo.demo_feedback,
+        meeting_notes=demo.meeting_notes,
+        demo_status=demo.demo_status
+    )
+
+    db.add(new_demo)
+
+    db.commit()
+
+    db.refresh(new_demo)
+
+    return new_demo
+
+@app.get(
+    "/demos",
+    response_model=list[DemoResponse]
+)
+def get_demos(
+    db: Session = Depends(get_db)
+):
+
+    return db.query(Demo).all()
+
+@app.get(
+    "/demos/{demo_id}",
+    response_model=DemoResponse
+)
+def get_demo(
+    demo_id: int,
+    db: Session = Depends(get_db)
+):
+
+    demo = (
+        db.query(Demo)
+        .filter(Demo.id == demo_id)
+        .first()
+    )
+
+    if not demo:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Demo not found"
+        )
+
+    return demo
+
+@app.put(
+    "/demos/{demo_id}",
+    response_model=DemoResponse
+)
+def update_demo(
+    demo_id: int,
+    updated_demo: DemoCreate,
+    db: Session = Depends(get_db)
+):
+
+    demo = (
+        db.query(Demo)
+        .filter(Demo.id == demo_id)
+        .first()
+    )
+
+    if not demo:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Demo not found"
+        )
+
+    demo.client_id = updated_demo.client_id
+
+    demo.assigned_employee = (
+        updated_demo.assigned_employee
+    )
+
+    demo.demo_date = updated_demo.demo_date
+
+    demo.demo_time = updated_demo.demo_time
+
+    demo.demo_feedback = (
+        updated_demo.demo_feedback
+    )
+
+    demo.meeting_notes = (
+        updated_demo.meeting_notes
+    )
+
+    demo.demo_status = updated_demo.demo_status
+
+    db.commit()
+
+    db.refresh(demo)
+
+    return demo
+
+@app.delete("/demos/{demo_id}")
+def delete_demo(
+    demo_id: int,
+    db: Session = Depends(get_db)
+):
+
+    demo = (
+        db.query(Demo)
+        .filter(Demo.id == demo_id)
+        .first()
+    )
+
+    if not demo:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Demo not found"
+        )
+
+    db.delete(demo)
+
+    db.commit()
+
+    return {
+        "message": "Demo deleted successfully"
+    }
+
+@app.get(
+    "/clients/{client_id}/demos",
+    response_model=list[DemoResponse]
+)
+def get_client_demos(
+    client_id: int,
+    db: Session = Depends(get_db)
+):
+
+    demos = (
+        db.query(Demo)
+        .filter(Demo.client_id == client_id)
+        .all()
+    )
+
+    return demos

@@ -24,11 +24,14 @@ class Client(Base):
     contact_person = Column(String, nullable=True)
     Mobile_No = Column(String(10), nullable=False)
     email = Column(String, nullable=True)
+    lead_source = Column(String, nullable=True)
+    address = Column(String, nullable=True)
     city_id = Column(Integer, ForeignKey("cities.id"))
     area_id = Column(Integer, ForeignKey("areas.id"))
     city = relationship("City")
     area = relationship("Area")
     call_logs = relationship("CallLog", back_populates="client")
+    demos = relationship("Demo",back_populates="client")
 
 class City(Base):
     __tablename__ = "cities"
@@ -69,7 +72,6 @@ class CallLog(Base):
         nullable=True
     )
 
-    lead_source = Column(String, nullable=True)
 
     lead_status = Column(String, nullable=False)
 
@@ -86,3 +88,38 @@ class CallLog(Base):
     existing_product = relationship("ExistingProduct")
     
     client = relationship("Client", back_populates="call_logs")
+
+class Demo(Base):
+
+    __tablename__ = "demos"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    client_id = Column(
+        Integer,
+        ForeignKey("clients.id")
+    )
+
+    assigned_employee = Column(String, nullable=False)
+
+    demo_date = Column(Date, nullable=False)
+
+    demo_time = Column(Time, nullable=False)
+
+    demo_feedback = Column(String, nullable=True)
+
+    meeting_notes = Column(String, nullable=True)
+
+    demo_status = Column(String, nullable=False)
+
+    created_date = Column(
+        Date,
+        default=lambda: datetime.now().date()
+    )
+
+    created_time = Column(
+        Time,
+        default=lambda: datetime.now().time()
+    )
+
+    client = relationship("Client", back_populates="demos")
