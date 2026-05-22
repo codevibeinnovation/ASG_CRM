@@ -548,3 +548,22 @@ def get_client_history(
     ).all()
 
     return history
+@app.get("/clients/{client_id}/latest-call-log")
+def get_latest_call_log(
+    client_id: int,
+    db: Session = Depends(get_db)
+):
+    latest_log = (
+        db.query(CallLog)
+        .filter(CallLog.client_id == client_id)
+        .order_by(CallLog.id.desc())
+        .first()
+    )
+
+    if not latest_log:
+        raise HTTPException(
+            status_code=404,
+            detail="No call logs found"
+        )
+
+    return latest_log
