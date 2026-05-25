@@ -125,7 +125,6 @@ def signup(
 # =========================
 
 @app.post("/login")
-
 def login(
 
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -133,12 +132,16 @@ def login(
     db: Session = Depends(get_db)
 ):
 
+    # FIND USER
+
     user = crud.get_user_by_email(
 
         db,
 
         form_data.username
     )
+
+    # EMAIL NOT FOUND
 
     if not user:
 
@@ -149,12 +152,39 @@ def login(
             detail="Invalid Email"
         )
 
-    if not verify_password(
+    # DEBUGGING
 
-        form_data.password,
+    print("EMAIL:", form_data.username)
 
-        user.password
-    ):
+    print("DB PASSWORD:", user.password)
+
+    # VERIFY PASSWORD
+
+    try:
+
+        password_valid = verify_password(
+
+            form_data.password,
+
+            user.password
+        )
+
+        print("VERIFY RESULT:", password_valid)
+
+    except Exception as e:
+
+        print("LOGIN ERROR:", str(e))
+
+        raise HTTPException(
+
+            status_code=500,
+
+            detail=f"Password Verify Error: {str(e)}"
+        )
+
+    # WRONG PASSWORD
+
+    if not password_valid:
 
         raise HTTPException(
 
@@ -162,6 +192,8 @@ def login(
 
             detail="Invalid Password"
         )
+
+    # CREATE TOKEN
 
     access_token = create_access_token(
 
@@ -175,13 +207,25 @@ def login(
         }
     )
 
+    # RETURN RESPONSE
+
     return {
 
         "access_token": access_token,
 
-        "token_type": "bearer"
+        "token_type": "bearer",
+
+        "user": {
+
+            "id": user.id,
+
+            "name": user.name,
+
+            "email": user.email,
+
+            "role": user.role
+        }
     }
-    
 @app.get("/me")
 def get_me(
 
