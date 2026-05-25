@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String,Date, Time
+from sqlalchemy import Column, ForeignKey, Integer, String,Date, Time , Float
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
@@ -32,6 +32,7 @@ class Client(Base):
     area = relationship("Area")
     call_logs = relationship("CallLog", back_populates="client")
     demos = relationship("Demo",back_populates="client")
+    deals = relationship("Deal", back_populates="client")
 
 class City(Base):
     __tablename__ = "cities"
@@ -125,3 +126,43 @@ class Demo(Base):
     )
 
     client = relationship("Client", back_populates="demos")
+
+class Deal(Base):
+
+    __tablename__ = "deals"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    client_id = Column(
+        Integer,
+        ForeignKey("clients.id")
+    )
+
+    deal_person_name = Column(String, nullable=False)
+
+    deal_name = Column(String, nullable=False)
+
+    contact_person_name = Column(String, nullable=True)
+
+    amount = Column(Float, nullable=False)
+
+    closing_date = Column(Date, nullable=True)
+
+    description = Column(String, nullable=True)
+
+    number_of_devices = Column(Integer, nullable=True)
+
+    software_type = Column(String, nullable=False)
+
+
+    created_date = Column(
+        Date,
+        default=lambda: datetime.now().date()
+    )
+
+    created_time = Column(
+        Time,
+        default=lambda: datetime.now().time()
+    )
+
+    client = relationship("Client", back_populates="deals")

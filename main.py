@@ -669,3 +669,52 @@ def get_client_demos(
     )
 
     return demos
+
+@app.post("/deals", response_model=schemas.DealResponse)
+
+def create_new_deal(
+    deal: schemas.DealCreate,
+    db: Session = Depends(get_db)
+):
+
+    return crud.create_deal(db, deal)
+
+@app.get("/deals", response_model=list[schemas.DealResponse])
+
+def get_all_deals(
+    db: Session = Depends(get_db)
+):
+
+    return crud.get_deals(db)
+
+@app.get("/deals/{deal_id}", response_model=schemas.DealResponse)
+
+def get_single_deal(
+    deal_id: int,
+    db: Session = Depends(get_db)
+):
+
+    return crud.get_deal(db, deal_id)
+
+@app.put("/deals/{deal_id}", response_model=schemas.DealResponse)
+
+def update_existing_deal(
+    deal_id: int,
+    deal: schemas.DealCreate,
+    db: Session = Depends(get_db)
+):
+
+    return crud.update_deal(db, deal_id, deal)
+
+@app.delete("/deals/{deal_id}")
+
+def delete_existing_deal(
+    deal_id: int,
+    db: Session = Depends(get_db)
+):
+
+    crud.delete_deal(db, deal_id)
+
+    return {
+        "message": "Deal deleted successfully"
+    }

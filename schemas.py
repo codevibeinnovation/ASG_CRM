@@ -114,7 +114,6 @@ class CallLogCreate(BaseModel):
 
     existing_product_id: Optional[int] = None
 
-
     lead_status: str
 
     remarks: Optional[str] = None
@@ -127,8 +126,6 @@ class CallLogResponse(BaseModel):
     client_id: int
 
     existing_product_id: Optional[int]
-
-
 
     lead_status: str
 
@@ -162,8 +159,6 @@ class DemoCreate(BaseModel):
     demo_status: str
 
     
-
-
 class DemoResponse(BaseModel):
 
     id: int
@@ -183,6 +178,39 @@ class DemoResponse(BaseModel):
     demo_location: Optional[str]
 
     demo_status: str
+
+    created_date: date
+
+    created_time: time
+
+    class Config:
+
+        from_attributes = True
+
+class DealCreate(BaseModel):
+
+    client_id: int
+
+    deal_person_name: str
+
+    deal_name: str
+
+    contact_person_name: Optional[str] = None
+
+    amount: float
+
+    closing_date: Optional[date] = None
+
+    description: Optional[str] = None
+
+    number_of_devices: Optional[int] = None
+
+    software_type: str
+
+
+class DealResponse(DealCreate):
+
+    id: int
 
     created_date: date
 

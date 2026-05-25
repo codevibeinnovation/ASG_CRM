@@ -134,3 +134,92 @@ def delete_client(db, client_id: int):
     db.commit()
 
     return client
+
+    def create_deal(db: Session, deal: schemas.DealCreate):
+
+    new_deal = models.Deal(
+
+        client_id=deal.client_id,
+
+        deal_person_name=deal.deal_person_name,
+
+        deal_name=deal.deal_name,
+
+        contact_person_name=deal.contact_person_name,
+
+        amount=deal.amount,
+
+        closing_date=deal.closing_date,
+
+        description=deal.description,
+
+        number_of_devices=deal.number_of_devices,
+
+        software_type=deal.software_type,
+
+    )
+
+    db.add(new_deal)
+
+    db.commit()
+
+    db.refresh(new_deal)
+
+    return new_deal
+
+def get_deals(db: Session):
+
+    return db.query(models.Deal).all()
+
+def get_deal(db: Session, deal_id: int):
+
+    return db.query(models.Deal).filter(
+        models.Deal.id == deal_id
+    ).first()
+
+def update_deal(
+    db: Session,
+    deal_id: int,
+    deal: schemas.DealCreate
+):
+
+    existing_deal = db.query(models.Deal).filter(
+        models.Deal.id == deal_id
+    ).first()
+
+    if not existing_deal:
+
+        return None
+
+    existing_deal.client_id = deal.client_id
+    existing_deal.deal_person_name = deal.deal_person_name
+    existing_deal.deal_name = deal.deal_name
+    existing_deal.contact_person_name = deal.contact_person_name
+    existing_deal.amount = deal.amount
+    existing_deal.closing_date = deal.closing_date
+    existing_deal.description = deal.description
+    existing_deal.number_of_devices = deal.number_of_devices
+    existing_deal.software_type = deal.software_type
+
+
+    db.commit()
+
+    db.refresh(existing_deal)
+
+    return existing_deal
+
+def delete_deal(db: Session, deal_id: int):
+
+    deal = db.query(models.Deal).filter(
+        models.Deal.id == deal_id
+    ).first()
+
+    if not deal:
+
+        return None
+
+    db.delete(deal)
+
+    db.commit()
+
+    return deal
