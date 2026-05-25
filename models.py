@@ -112,6 +112,8 @@ class Demo(Base):
 
     demo_status = Column(String, nullable=False)
 
+    demo_location = Column(String, nullable=True)
+
     created_date = Column(
         Date,
         default=lambda: datetime.now().date()

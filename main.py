@@ -504,15 +504,36 @@ def create_demo(
     db: Session = Depends(get_db)
 ):
 
+    client = (
+    db.query(Client)
+    .filter(Client.id == demo.client_id)
+    .first()
+    )
+
+    if not client:
+        raise HTTPException(
+            status_code=404,
+            detail="Client not found"
+        )
+
+    map_link = None
+
+    if client.address:
+        map_link = (
+            "https://www.google.com/maps/search/?api=1&query="
+            + client.address.replace(" ", "+")
+        )
+
     new_demo = Demo(
         client_id=demo.client_id,
         assigned_employee=demo.assigned_employee,
         demo_date=demo.demo_date,
         demo_time=demo.demo_time,
+        demo_location=map_link,
         demo_feedback=demo.demo_feedback,
         meeting_notes=demo.meeting_notes,
         demo_status=demo.demo_status
-    )
+    )      
 
     db.add(new_demo)
 

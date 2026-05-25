@@ -161,6 +161,8 @@ class DemoCreate(BaseModel):
 
     demo_status: str
 
+    
+
 
 class DemoResponse(BaseModel):
 
@@ -177,6 +179,8 @@ class DemoResponse(BaseModel):
     demo_feedback: Optional[str]
 
     meeting_notes: Optional[str]
+
+    demo_location: Optional[str]
 
     demo_status: str
 
