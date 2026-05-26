@@ -19,7 +19,6 @@ from models import (
 
 from auth_config import hash_password
 
-from database import SessionLocal
 
 from auth import (
     ADMIN_EMAIL,
@@ -76,6 +75,8 @@ def get_all_users(db: Session):
 # =========================
 
 def create_default_admin():
+
+    from database import SessionLocal
 
     db = SessionLocal()
 

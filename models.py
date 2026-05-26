@@ -101,7 +101,6 @@ class Client(Base):
     ForeignKey("users.id")
     )
 
-    created_user = relationship("User")
     city = relationship("City")
 
     area = relationship("Area")
