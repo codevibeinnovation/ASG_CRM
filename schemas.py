@@ -1,6 +1,19 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import (
+    BaseModel,
+    EmailStr
+)
+
+from datetime import (
+    date,
+    time
+)
+
 from typing import Optional
-from datetime import date, time
+
+
+# =========================
+# USER SCHEMAS
+# =========================
 
 class UserCreate(BaseModel):
 
@@ -12,15 +25,6 @@ class UserCreate(BaseModel):
 
     role: str = "user"
 
-class AdminLogin(BaseModel):
-    email: str
-    password: str
-
-class LoginSchema(BaseModel):
-
-    email: EmailStr
-
-    password: str
 
 class UserResponse(BaseModel):
 
@@ -36,81 +40,142 @@ class UserResponse(BaseModel):
 
         from_attributes = True
 
-class ClientCreate(BaseModel):
-    pharmacy_name: str
-    contact_person: Optional[str] = None
-    Mobile_No: str
-    email: Optional[EmailStr] = None
-    lead_source: Optional[str] = None
-    address: Optional[str] = None
-    city_id: int
-    area_id: int
 
-    @field_validator("Mobile_No")
-    @classmethod
-    def validate_phone(cls, v):
+# =========================
+# LOGIN SCHEMAS
+# =========================
 
-        if not v.isdigit():
-            raise ValueError(
-                "Phone number must contain only numbers"
-            )
+class LoginSchema(BaseModel):
 
-        if len(v) != 10:
-            raise ValueError(
-                "Phone number must be 10 digits"
-            )
+    email: EmailStr
 
-        return v
+    password: str
+
+
+class Token(BaseModel):
+
+    access_token: str
+
+    token_type: str
+
+
+# =========================
+# CITY SCHEMAS
+# =========================
 
 class CityCreate(BaseModel):
+
     name: str
 
-class AreaCreate(BaseModel):
-    name: str
-    city_id: int
 
 class CityResponse(BaseModel):
+
     id: int
+
     name: str
 
     class Config:
+
         from_attributes = True
+
+
+# =========================
+# AREA SCHEMAS
+# =========================
+
+class AreaCreate(BaseModel):
+
+    name: str
+
+    city_id: int
+
 
 class AreaResponse(BaseModel):
+
     id: int
+
     name: str
+
     city_id: int
 
     class Config:
+
         from_attributes = True
 
-class ClientResponse(BaseModel):
-    id: int
+
+# =========================
+# CLIENT SCHEMAS
+# =========================
+
+class ClientCreate(BaseModel):
+
     pharmacy_name: str
-    contact_person: Optional[str]
+
+    contact_person: Optional[str] = None
+
     Mobile_No: str
-    email: Optional[EmailStr]
+
+    email: Optional[EmailStr] = None
+
     lead_source: Optional[str] = None
+
     address: Optional[str] = None
+
     city_id: int
+
     area_id: int
 
-    city: CityResponse
-    area: AreaResponse
+
+class ClientResponse(BaseModel):
+
+    id: int
+
+    pharmacy_name: str
+
+    contact_person: Optional[str]
+
+    Mobile_No: str
+
+    email: Optional[EmailStr]
+
+    lead_source: Optional[str]
+
+    address: Optional[str]
+
+    city_id: int
+
+    area_id: int
+
+    created_by: int
 
     class Config:
+
         from_attributes = True
 
+
+# =========================
+# EXISTING PRODUCT
+# =========================
+
 class ExistingProductCreate(BaseModel):
+
     product_name: str
 
 
 class ExistingProductResponse(BaseModel):
+
     id: int
+
     product_name: str
 
     class Config:
+
         from_attributes = True
+
+
+# =========================
+# CALL LOG SCHEMAS
+# =========================
 
 class CallLogCreate(BaseModel):
 
@@ -124,7 +189,9 @@ class CallLogCreate(BaseModel):
 
     follow_up_date: Optional[date] = None
 
+
 class CallLogResponse(BaseModel):
+
     id: int
 
     client_id: int
@@ -141,16 +208,20 @@ class CallLogResponse(BaseModel):
 
     created_time: time
 
-    existing_product: Optional[ExistingProductResponse]
-
     class Config:
+
         from_attributes = True
+
+
+# =========================
+# DEMO SCHEMAS
+# =========================
 
 class DemoCreate(BaseModel):
 
     client_id: int
 
-    assigned_employee: str
+    assigned_employee_id: int
 
     demo_date: date
 
@@ -162,14 +233,22 @@ class DemoCreate(BaseModel):
 
     demo_status: str
 
-    
+    demo_location: Optional[str] = None
+
+    demo_installed: str = "no"
+
+    installation_date: Optional[date] = None
+
+    trial_days: int = 10
+
+
 class DemoResponse(BaseModel):
 
     id: int
 
     client_id: int
 
-    assigned_employee: str
+    assigned_employee_id: int
 
     demo_date: date
 
@@ -179,46 +258,118 @@ class DemoResponse(BaseModel):
 
     meeting_notes: Optional[str]
 
-    demo_location: Optional[str]
-
     demo_status: str
 
-    created_date: date
+    demo_location: Optional[str]
 
-    created_time: time
+    demo_installed: str
+
+    installation_date: Optional[date]
+
+    trial_days: int
+
+    trial_expiry_date: Optional[date]
+
+    trial_status: str
 
     class Config:
 
         from_attributes = True
 
+
+# =========================
+# DEAL SCHEMAS
+# =========================
+
 class DealCreate(BaseModel):
 
     client_id: int
 
-    deal_person_name: str
+    deal_owner_id: int
 
     deal_name: str
 
-    contact_person_name: Optional[str] = None
+    software_type: str
 
     amount: float
 
-    closing_date: Optional[date] = None
+    number_of_devices: int
 
-    description: Optional[str] = None
+    start_date: date
 
-    number_of_devices: Optional[int] = None
+    end_date: date
 
-    software_type: str
+    notes: Optional[str] = None
 
 
-class DealResponse(DealCreate):
+class DealResponse(BaseModel):
 
     id: int
 
-    created_date: date
+    client_id: int
 
-    created_time: time
+    deal_owner_id: int
+
+    deal_name: str
+
+    software_type: str
+
+    amount: float
+
+    number_of_devices: int
+
+    start_date: date
+
+    end_date: date
+
+    renewal_reminder_date: Optional[date]
+
+    renewal_status: str
+
+    notes: Optional[str]
+
+    class Config:
+
+        from_attributes = True
+
+
+# =========================
+# REMINDER SCHEMAS
+# =========================
+
+class ReminderCreate(BaseModel):
+
+    title: str
+
+    description: str | None = None
+
+    reminder_date: date
+
+    reminder_time: time | None = None
+
+    user_id: int
+
+    client_id: int | None = None
+
+class ReminderResponse(BaseModel):
+
+    id: int
+
+    title: str
+
+    description: str | None = None
+
+    reminder_date: date
+
+    reminder_time: time | None = None
+
+    status: str
+
+    user_id: int
+
+    client_id: int | None = None
+
+    created_date: date
 
     class Config:
 

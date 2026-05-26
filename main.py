@@ -1,105 +1,128 @@
-from fastapi import FastAPI, Depends, HTTPException,Request
-from sqlalchemy.orm import Session
-from starlette.middleware.sessions import SessionMiddleware
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordRequestForm
-
-from database import (
-    engine,
-    Base,
-    SessionLocal
+from fastapi import (
+    FastAPI,
+    Depends,
+    HTTPException
 )
 
-from models import *
-from schemas import *
-from crud import * 
-from auth_config import verify_password
+from fastapi.middleware.cors import CORSMiddleware
+
+from fastapi.security import OAuth2PasswordRequestForm
+
+from sqlalchemy.orm import Session
+
+from database import (
+    SessionLocal,
+    engine,
+    Base
+)
+
+import models
+import schemas
+import crud
+
+from models import User
+
+from auth_config import (
+    verify_password
+)
 
 from jwt_token import (
     create_access_token,
     get_current_user,
     admin_only
 )
+from datetime import date
 
-from fastapi.responses import RedirectResponse
 
-from auth import (
-    SECRET_KEY,
-    ADMIN_EMAIL, 
-    ADMIN_PASSWORD
-)
+# =========================
+# CREATE TABLES
+# =========================
+
+Base.metadata.create_all(bind=engine)
+
+
+# =========================
+# CREATE DEFAULT ADMIN
+# =========================
+
+crud.create_default_admin()
+
+
+# =========================
+# APP
+# =========================
 
 app = FastAPI()
 
+
+# =========================
+# CORS
+# =========================
+
 app.add_middleware(
-    SessionMiddleware,
-    secret_key=SECRET_KEY
-)
-app.add_middleware(
+
     CORSMiddleware,
+
     allow_origins=["*"],
+
     allow_credentials=True,
+
     allow_methods=["*"],
-    allow_headers=["*"],
+
+    allow_headers=["*"]
 )
 
-Base.metadata.create_all(bind=engine, checkfirst=True)
+
+# =========================
+# DATABASE
+# =========================
 
 def get_db():
 
     db = SessionLocal()
 
     try:
+
         yield db
 
     finally:
+
         db.close()
 
 
+# =========================
+# ROOT
+# =========================
+
 @app.get("/")
-def home():
+
+def root():
 
     return {
-        "message": "ASG CRM Running"
+        "message": "CRM Running Successfully"
     }
 
-@app.get(
-    "/users",
-    response_model=list[UserResponse]
-)
-def get_users(
-    db: Session = Depends(get_db)
-):
 
-    users = get_all_users(db)
+# =========================
+# LOGIN
+# =========================
 
-    return users
-
-# call the default_admin funcation
-create_default_admin()
-
-@app.get("/me")
-def get_me(
-    current_user: User = Depends(get_current_user)
-):
-
-    return {
-        "id": current_user.id,
-        "name": current_user.name,
-        "email": current_user.email,
-        "role": current_user.role
-    }
 @app.post("/login")
+
 def login(
+
     form_data: OAuth2PasswordRequestForm = Depends(),
+
     db: Session = Depends(get_db)
 ):
 
-    existing_user = db.query(User).filter(
-        User.email == form_data.username
-    ).first()
+    user = crud.get_user_by_email(
+        db,
+        form_data.username
+    )
 
-    if not existing_user:
+    if not user:
+
         raise HTTPException(
             status_code=401,
             detail="Invalid Email"
@@ -107,39 +130,55 @@ def login(
 
     if not verify_password(
         form_data.password,
-        existing_user.password
+        user.password
     ):
+
         raise HTTPException(
             status_code=401,
             detail="Invalid Password"
         )
 
-    access_token = create_access_token(
-        data={
-            "sub": existing_user.email,
-            "role": existing_user.role
-        }
-    )
+    token = create_access_token({
+
+        "sub": user.email,
+
+        "role": user.role,
+
+        "user_id": user.id
+    })
 
     return {
-        "access_token": access_token,
-        "token_type": "bearer"
+
+        "access_token": token,
+
+        "token_type": "bearer",
+
+        "role": user.role,
+
+        "name": user.name
     }
-        
-@app.post("/admin/users")
-def create_User(
-    user: UserCreate,
+
+
+# =========================
+# CREATE USER
+# ADMIN ONLY
+# =========================
+
+@app.post(
+    "/users",
+    response_model=schemas.UserResponse
+)
+
+def create_user(
+
+    user: schemas.UserCreate,
+
     db: Session = Depends(get_db),
+
     current_user: User = Depends(admin_only)
 ):
 
-    if current_user.role != "admin":
-
-        raise HTTPException(
-            status_code=403,
-            detail="Only admin allowed"
-    )
-    existing_user = get_user_by_email(
+    existing_user = crud.get_user_by_email(
         db,
         user.email
     )
@@ -151,67 +190,162 @@ def create_User(
             detail="Email already exists"
         )
 
-    new_user = create_user(db, user)
+    return crud.create_user(
+        db,
+        user
+    )
 
-    return {
-        "message": "User created successfully",
-        "user": new_user
-    }
 
-@app.post("/clients", response_model=ClientResponse)
-def add_client(client: ClientCreate, db: Session = Depends(get_db)):
-    return create_client(db, client)
+# =========================
+# GET USERS
+# ADMIN ONLY
+# =========================
 
-@app.get("/clients", response_model=list[ClientResponse])
-def all_clients(db: Session = Depends(get_db)):
-    return get_clients(db)
+@app.get(
+    "/users",
+    response_model=list[schemas.UserResponse]
+)
 
-@app.get("/clients/search/")
-def search_client(name: str, db: Session = Depends(get_db)):
+def get_users(
 
-    clients = search_clients(db, name)
+    db: Session = Depends(get_db),
 
-    if not clients:
-        raise HTTPException(
-            status_code=404,
-            detail="No clients found"
-        )
-
-    return clients
-
-@app.put("/clients/{client_id}")
-def edit_client(
-    client_id: int,
-    client: ClientCreate,
-    db: Session = Depends(get_db)
+    current_user: User = Depends(admin_only)
 ):
 
-    updated_client = update_client(
+    return crud.get_all_users(db)
+
+
+# =========================
+# CREATE CLIENT
+# =========================
+
+@app.post(
+    "/clients",
+    response_model=schemas.ClientResponse
+)
+
+def create_client(
+
+    client: schemas.ClientCreate,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(get_current_user)
+):
+
+    return crud.create_client(
+
         db,
+
+        client,
+
+        current_user.id
+    )
+
+
+# =========================
+# GET CLIENTS
+# =========================
+
+@app.get(
+    "/clients",
+    response_model=list[schemas.ClientResponse]
+)
+
+def get_clients(
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(get_current_user)
+):
+
+    return crud.get_clients(db)
+
+
+# =========================
+# SEARCH CLIENTS
+# =========================
+
+@app.get("/search-clients")
+
+def search_clients(
+
+    name: str,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(get_current_user)
+):
+
+    return crud.search_clients(
+        db,
+        name
+    )
+
+
+# =========================
+# UPDATE CLIENT
+# =========================
+
+@app.put(
+    "/clients/{client_id}",
+    response_model=schemas.ClientResponse
+)
+
+def update_client(
+
+    client_id: int,
+
+    client: schemas.ClientCreate,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(get_current_user)
+):
+
+    updated_client = crud.update_client(
+
+        db,
+
         client_id,
+
         client
     )
 
     if not updated_client:
+
         raise HTTPException(
             status_code=404,
             detail="Client not found"
         )
 
-    return {
-        "message": "Client updated successfully",
-        "client": updated_client
-    }
+    return updated_client
+
+
+# =========================
+# DELETE CLIENT
+# ADMIN ONLY
+# =========================
 
 @app.delete("/clients/{client_id}")
-def remove_client(
+
+def delete_client(
+
     client_id: int,
-    db: Session = Depends(get_db)
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(admin_only)
 ):
 
-    client = delete_client(db, client_id)
+    deleted_client = crud.delete_client(
+        db,
+        client_id
+    )
 
-    if not client:
+    if not deleted_client:
+
         raise HTTPException(
             status_code=404,
             detail="Client not found"
@@ -221,525 +355,585 @@ def remove_client(
         "message": "Client deleted successfully"
     }
 
-@app.post("/admin/login")
-def admin_login(admin: AdminLogin):
+# =========================
+# CREATE CITY
+# ADMIN ONLY
+# =========================
 
-    if (
-        admin.email != ADMIN_EMAIL
-        or
-        admin.password != ADMIN_PASSWORD
-    ):
+@app.post(
 
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid admin credentials"
-        )
+    "/cities",
 
-    access_token = create_access_token(
-        data={
-            "sub": admin.email,
-            "role": "admin"
-        }
-    )
+    response_model=schemas.CityResponse
+)
 
-    return {
-        "message": "Admin login successful",
-        "access_token": access_token,
-        "token_type": "bearer"
-    }
+def create_city(
 
-@app.get("/cities", response_model=list[CityResponse])
-def get_cities(db: Session = Depends(get_db)):
-    return db.query(City).all()
+    city: schemas.CityCreate,
 
-@app.get("/cities/{city_id}/areas",response_model=list[AreaResponse])
-def get_areas_by_city(
-    city_id: int,
-    db: Session = Depends(get_db)
-):
-    return (
-        db.query(Area)
-        .filter(Area.city_id == city_id)
-        .all()
-    )
-@app.post("/admin/cities", response_model=CityResponse)
-def add_city(city: CityCreate, db: Session = Depends(get_db)):
+    db: Session = Depends(get_db),
 
-    new_city = City(name=city.name)
-
-    db.add(new_city)
-    db.commit()
-    db.refresh(new_city)
-
-    return new_city
-
-@app.put("/admin/cities/{city_id}")
-def update_city(
-    city_id: int,
-    city: CityCreate,
-    db: Session = Depends(get_db)
+    current_user: User = Depends(admin_only)
 ):
 
-    existing_city = db.query(City).filter(City.id == city_id).first()
-
-    if not existing_city:
-        raise HTTPException(status_code=404, detail="City not found")
-
-    existing_city.name = city.name
-
-    db.commit()
-
-    return {"message": "City updated successfully"}
-
-@app.delete("/admin/cities/{city_id}")
-def delete_city(city_id: int, db: Session = Depends(get_db)):
-
-    city = db.query(City).filter(City.id == city_id).first()
-
-    if not city:
-        raise HTTPException(status_code=404, detail="City not found")
-
-    db.delete(city)
-    db.commit()
-
-    return {"message": "City deleted successfully"}
-
-@app.post("/admin/areas", response_model=AreaResponse)
-def add_area(area: AreaCreate, db: Session = Depends(get_db)):
-
-    city = db.query(City).filter(City.id == area.city_id).first()
-
-    if not city:
-        raise HTTPException(status_code=404, detail="City not found")
-
-    new_area = Area(
-        name=area.name,
-        city_id=area.city_id
+    return crud.create_city(
+        db,
+        city
     )
 
-    db.add(new_area)
-    db.commit()
-    db.refresh(new_area)
 
-    return new_area
-
-@app.put("/admin/areas/{area_id}")
-def update_area(
-    area_id: int,
-    area: AreaCreate,
-    db: Session = Depends(get_db)
-):
-
-    existing_area = db.query(Area).filter(Area.id == area_id).first()
-
-    if not existing_area:
-        raise HTTPException(status_code=404, detail="Area not found")
-
-    existing_area.name = area.name
-    existing_area.city_id = area.city_id
-
-    db.commit()
-
-    return {"message": "Area updated successfully"}
-
-@app.delete("/admin/areas/{area_id}")
-def delete_area(area_id: int, db: Session = Depends(get_db)):
-
-    area = db.query(Area).filter(Area.id == area_id).first()
-
-    if not area:
-        raise HTTPException(status_code=404, detail="Area not found")
-
-    db.delete(area)
-    db.commit()
-
-    return {"message": "Area deleted successfully"}
-
-@app.post("/admin/products")
-def add_product(
-    product: ExistingProductCreate,
-    db: Session = Depends(get_db)
-):
-    existing_product = db.query(ExistingProduct).filter(
-        ExistingProduct.product_name == product.product_name
-    ).first()
-
-    if existing_product:
-        raise HTTPException(
-            status_code=400,
-            detail="Product already exists"
-        )
-
-    new_product = ExistingProduct(
-        product_name=product.product_name
-    )
-
-    db.add(new_product)
-    db.commit()
-    db.refresh(new_product)
-
-    return {
-        "message": "Product added successfully",
-        "data": new_product
-    }
+# =========================
+# GET CITIES
+# =========================
 
 @app.get(
-    "/admin/products",
-    response_model=list[ExistingProductResponse]
-)
-def get_products(
-    db: Session = Depends(get_db)
-):
-    products = db.query(ExistingProduct).all()
 
-    return products
+    "/cities",
+
+    response_model=list[schemas.CityResponse]
+)
+
+def get_cities(
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(get_current_user)
+):
+
+    return crud.get_cities(db)
 
 @app.put(
-    "/admin/products/{product_id}",
-    response_model=ExistingProductResponse
+
+    "/cities/{city_id}",
+
+    response_model=schemas.CityResponse
 )
-def update_product(
-    product_id: int,
-    product: ExistingProductCreate,
-    db: Session = Depends(get_db)
-):
-    existing_product = db.query(ExistingProduct).filter(
-        ExistingProduct.id == product_id
-    ).first()
 
-    if not existing_product:
+def update_city(
+
+    city_id: int,
+
+    city: schemas.CityCreate,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(admin_only)
+):
+
+    updated_city = crud.update_city(
+
+        db,
+
+        city_id,
+
+        city
+    )
+
+    if not updated_city:
+
         raise HTTPException(
+
             status_code=404,
+
+            detail="City not found"
+        )
+
+    return updated_city
+
+@app.delete("/cities/{city_id}")
+
+def delete_city(
+
+    city_id: int,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(admin_only)
+):
+
+    deleted_city = crud.delete_city(
+        db,
+        city_id
+    )
+
+    if not deleted_city:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="City not found"
+        )
+
+    return {
+        "message": "City deleted successfully"
+    }
+
+# =========================
+# CREATE AREA
+# ADMIN ONLY
+# =========================
+
+@app.post(
+
+    "/areas",
+
+    response_model=schemas.AreaResponse
+)
+
+def create_area(
+
+    area: schemas.AreaCreate,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(admin_only)
+):
+
+    return crud.create_area(
+        db,
+        area
+    )
+
+
+# =========================
+# GET AREAS
+# =========================
+
+@app.get(
+
+    "/areas",
+
+    response_model=list[schemas.AreaResponse]
+)
+
+def get_areas(
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(get_current_user)
+):
+
+    return crud.get_areas(db)
+
+@app.put(
+
+    "/areas/{area_id}",
+
+    response_model=schemas.AreaResponse
+)
+
+def update_area(
+
+    area_id: int,
+
+    area: schemas.AreaCreate,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(admin_only)
+):
+
+    updated_area = crud.update_area(
+
+        db,
+
+        area_id,
+
+        area
+    )
+
+    if not updated_area:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="Area not found"
+        )
+
+    return updated_area
+
+@app.delete("/areas/{area_id}")
+
+def delete_area(
+
+    area_id: int,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(admin_only)
+):
+
+    deleted_area = crud.delete_area(
+        db,
+        area_id
+    )
+
+    if not deleted_area:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="Area not found"
+        )
+
+    return {
+        "message": "Area deleted successfully"
+    }
+
+# =========================
+# CREATE EXISTING PRODUCT
+# ADMIN ONLY
+# =========================
+
+@app.post(
+
+    "/existing-products",
+
+    response_model=schemas.ExistingProductResponse
+)
+
+def create_existing_product(
+
+    product: schemas.ExistingProductCreate,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(admin_only)
+):
+
+    return crud.create_existing_product(
+        db,
+        product
+    )
+
+
+# =========================
+# GET EXISTING PRODUCTS
+# =========================
+
+@app.get(
+
+    "/existing-products",
+
+    response_model=list[
+        schemas.ExistingProductResponse
+    ]
+)
+
+def get_existing_products(
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(get_current_user)
+):
+
+    return crud.get_existing_products(db)
+
+@app.put(
+
+    "/existing-products/{product_id}",
+
+    response_model=schemas.ExistingProductResponse
+)
+
+def update_existing_product(
+
+    product_id: int,
+
+    product: schemas.ExistingProductCreate,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(admin_only)
+):
+
+    updated_product = crud.update_existing_product(
+
+        db,
+
+        product_id,
+
+        product
+    )
+
+    if not updated_product:
+
+        raise HTTPException(
+
+            status_code=404,
+
             detail="Product not found"
         )
 
-    existing_product.product_name = product.product_name
+    return updated_product
 
+@app.delete("/existing-products/{product_id}")
 
-    db.commit()
-    db.refresh(existing_product)
+def delete_existing_product(
 
-    return existing_product
-
-@app.delete("/admin/products/{product_id}")
-def delete_product(
     product_id: int,
-    db: Session = Depends(get_db)
-):
-    product = db.query(ExistingProduct).filter(
-        ExistingProduct.id == product_id
-    ).first()
 
-    if not product:
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(admin_only)
+):
+
+    deleted_product = crud.delete_existing_product(
+        db,
+        product_id
+    )
+
+    if not deleted_product:
+
         raise HTTPException(
+
             status_code=404,
+
             detail="Product not found"
         )
-
-    db.delete(product)
-    db.commit()
 
     return {
         "message": "Product deleted successfully"
     }
 
-@app.post(
-    "/call-logs",
-    response_model=CallLogResponse
-)
-
-def create_call_log(
-    call_log: CallLogCreate,
-    db: Session = Depends(get_db)
-):
-
-    client = db.query(Client).filter(
-        Client.id == call_log.client_id
-    ).first()
-
-    if not client:
-        raise HTTPException(
-            status_code=404,
-            detail="Client not found"
-        )
-
-    new_log = CallLog(
-        **call_log.dict()
-    )
-
-    db.add(new_log)
-
-    db.commit()
-
-    db.refresh(new_log)
-
-    return new_log
-
-@app.get(
-    "/clients/{client_id}/history",
-    response_model=list[CallLogResponse]
-)
-
-def get_client_history(
-    client_id: int,
-    db: Session = Depends(get_db)
-):
-
-    client = db.query(Client).filter(
-        Client.id == client_id
-    ).first()
-
-    if not client:
-        raise HTTPException(
-            status_code=404,
-            detail="Client not found"
-        )
-
-    history = db.query(CallLog).filter(
-        CallLog.client_id == client_id
-    ).all()
-
-    return history
-@app.get("/clients/{client_id}/latest-call-log")
-def get_latest_call_log(
-    client_id: int,
-    db: Session = Depends(get_db)
-):
-    latest_log = (
-        db.query(CallLog)
-        .filter(CallLog.client_id == client_id)
-        .order_by(CallLog.id.desc())
-        .first()
-    )
-
-    if not latest_log:
-        raise HTTPException(
-            status_code=404,
-            detail="No call logs found"
-        )
-
-    return latest_log
+# =========================
+# CREATE DEMO
+# =========================
 
 @app.post(
     "/demos",
-    response_model=DemoResponse
+    response_model=schemas.DemoResponse
 )
+
 def create_demo(
-    demo: DemoCreate,
-    db: Session = Depends(get_db)
+
+    demo: schemas.DemoCreate,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(get_current_user)
 ):
 
-    client = (
-    db.query(Client)
-    .filter(Client.id == demo.client_id)
-    .first()
+    return crud.create_demo(
+        db,
+        demo
     )
 
-    if not client:
-        raise HTTPException(
-            status_code=404,
-            detail="Client not found"
-        )
 
-    map_link = None
-
-    if client.address:
-        map_link = (
-            "https://www.google.com/maps/search/?api=1&query="
-            + client.address.replace(" ", "+")
-        )
-
-    new_demo = Demo(
-        client_id=demo.client_id,
-        assigned_employee=demo.assigned_employee,
-        demo_date=demo.demo_date,
-        demo_time=demo.demo_time,
-        demo_location=map_link,
-        demo_feedback=demo.demo_feedback,
-        meeting_notes=demo.meeting_notes,
-        demo_status=demo.demo_status
-    )      
-
-    db.add(new_demo)
-
-    db.commit()
-
-    db.refresh(new_demo)
-
-    return new_demo
+# =========================
+# GET DEMOS
+# =========================
 
 @app.get(
     "/demos",
-    response_model=list[DemoResponse]
+    response_model=list[schemas.DemoResponse]
 )
+
 def get_demos(
-    db: Session = Depends(get_db)
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(get_current_user)
 ):
 
-    return db.query(Demo).all()
+    crud.check_expired_trials(db)
 
-@app.get(
-    "/demos/{demo_id}",
-    response_model=DemoResponse
+    return crud.get_demos(db)
+
+
+# =========================
+# CREATE DEAL
+# =========================
+
+@app.post(
+    "/deals",
+    response_model=schemas.DealResponse
 )
-def get_demo(
-    demo_id: int,
-    db: Session = Depends(get_db)
+
+def create_deal(
+
+    deal: schemas.DealCreate,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(get_current_user)
 ):
 
-    demo = (
-        db.query(Demo)
-        .filter(Demo.id == demo_id)
-        .first()
+    return crud.create_deal(
+        db,
+        deal
     )
 
-    if not demo:
+
+# =========================
+# GET DEALS
+# =========================
+
+@app.get(
+    "/deals",
+    response_model=list[schemas.DealResponse]
+)
+
+def get_deals(
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(get_current_user)
+):
+
+    return crud.get_deals(db)
+
+
+# =========================
+# GET SINGLE DEAL
+# =========================
+
+@app.get(
+    "/deals/{deal_id}",
+    response_model=schemas.DealResponse
+)
+
+def get_deal(
+
+    deal_id: int,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(get_current_user)
+):
+
+    deal = crud.get_deal(
+        db,
+        deal_id
+    )
+
+    if not deal:
 
         raise HTTPException(
             status_code=404,
-            detail="Demo not found"
+            detail="Deal not found"
         )
 
-    return demo
+    return deal
+
+
+# =========================
+# UPDATE DEAL
+# =========================
 
 @app.put(
-    "/demos/{demo_id}",
-    response_model=DemoResponse
+    "/deals/{deal_id}",
+    response_model=schemas.DealResponse
 )
-def update_demo(
-    demo_id: int,
-    updated_demo: DemoCreate,
-    db: Session = Depends(get_db)
+
+def update_deal(
+
+    deal_id: int,
+
+    deal: schemas.DealCreate,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(get_current_user)
 ):
 
-    demo = (
-        db.query(Demo)
-        .filter(Demo.id == demo_id)
-        .first()
+    updated_deal = crud.update_deal(
+
+        db,
+
+        deal_id,
+
+        deal
     )
 
-    if not demo:
+    if not updated_deal:
 
         raise HTTPException(
             status_code=404,
-            detail="Demo not found"
+            detail="Deal not found"
         )
 
-    demo.client_id = updated_demo.client_id
+    return updated_deal
 
-    demo.assigned_employee = (
-        updated_demo.assigned_employee
-    )
 
-    demo.demo_date = updated_demo.demo_date
+# =========================
+# DELETE DEAL
+# ADMIN ONLY
+# =========================
 
-    demo.demo_time = updated_demo.demo_time
+@app.delete("/deals/{deal_id}")
 
-    demo.demo_feedback = (
-        updated_demo.demo_feedback
-    )
+def delete_deal(
 
-    demo.meeting_notes = (
-        updated_demo.meeting_notes
-    )
+    deal_id: int,
 
-    demo.demo_status = updated_demo.demo_status
+    db: Session = Depends(get_db),
 
-    db.commit()
-
-    db.refresh(demo)
-
-    return demo
-
-@app.delete("/demos/{demo_id}")
-def delete_demo(
-    demo_id: int,
-    db: Session = Depends(get_db)
+    current_user: User = Depends(admin_only)
 ):
 
-    demo = (
-        db.query(Demo)
-        .filter(Demo.id == demo_id)
-        .first()
+    deleted_deal = crud.delete_deal(
+        db,
+        deal_id
     )
 
-    if not demo:
+    if not deleted_deal:
 
         raise HTTPException(
             status_code=404,
-            detail="Demo not found"
+            detail="Deal not found"
         )
-
-    db.delete(demo)
-
-    db.commit()
 
     return {
-        "message": "Demo deleted successfully"
+        "message": "Deal deleted successfully"
     }
 
-@app.get(
-    "/clients/{client_id}/demos",
-    response_model=list[DemoResponse]
+
+# =========================
+# CREATE REMINDER
+# =========================
+
+@app.post(
+    "/reminders",
+    response_model=schemas.ReminderResponse
 )
-def get_client_demos(
-    client_id: int,
-    db: Session = Depends(get_db)
+
+def create_reminder(
+
+    reminder: schemas.ReminderCreate,
+
+    db: Session = Depends(get_db),
+
+    current_user: User = Depends(get_current_user)
 ):
 
-    demos = (
-        db.query(Demo)
-        .filter(Demo.client_id == client_id)
-        .all()
+    return crud.create_reminder(
+        db,
+        reminder
     )
 
-    return demos
 
-# @app.post("/deals", response_model=schemas.DealResponse)
+# =========================
+# TODAY REMINDERS
+# =========================
 
-# def create_new_deal(
-#     deal: schemas.DealCreate,
-#     db: Session = Depends(get_db)
-# ):
+@app.get(
+    "/today-reminders",
+    response_model=list[schemas.ReminderResponse]
+)
 
-#     return crud.create_deal(db, deal)
+def today_reminders(
 
-# @app.get("/deals", response_model=list[schemas.DealResponse])
+    db: Session = Depends(get_db),
 
-# def get_all_deals(
-#     db: Session = Depends(get_db)
-# ):
+    current_user: User = Depends(get_current_user)
+):
 
-#     return crud.get_deals(db)
+    crud.create_trial_expiry_reminders(db)
 
-# @app.get("/deals/{deal_id}", response_model=schemas.DealResponse)
+    crud.create_renewal_reminders(db)
 
-# def get_single_deal(
-#     deal_id: int,
-#     db: Session = Depends(get_db)
-# ):
-
-#     return crud.get_deal(db, deal_id)
-
-# @app.put("/deals/{deal_id}", response_model=schemas.DealResponse)
-
-# def update_existing_deal(
-#     deal_id: int,
-#     deal: schemas.DealCreate,
-#     db: Session = Depends(get_db)
-# ):
-
-#     return crud.update_deal(db, deal_id, deal)
-
-# @app.delete("/deals/{deal_id}")
-
-# def delete_existing_deal(
-#     deal_id: int,
-#     db: Session = Depends(get_db)
-# ):
-
-#     crud.delete_deal(db, deal_id)
-
-#     return {
-#         "message": "Deal deleted successfully"
-#     }
+    return crud.get_today_reminders(db)
