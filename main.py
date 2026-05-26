@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException,Request
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordRequestForm
 
 from database import (
     engine,
@@ -14,7 +15,11 @@ from schemas import *
 from crud import * 
 from auth_config import verify_password
 
-from jwt_token import create_access_token
+from jwt_token import (
+    create_access_token,
+    get_current_user,
+    admin_only
+)
 
 from fastapi.responses import RedirectResponse
 
@@ -25,6 +30,7 @@ from auth import (
 )
 
 app = FastAPI()
+
 app.add_middleware(
     SessionMiddleware,
     secret_key=SECRET_KEY
@@ -57,7 +63,6 @@ def home():
         "message": "ASG CRM Running"
     }
 
-
 @app.get(
     "/users",
     response_model=list[UserResponse]
@@ -70,29 +75,40 @@ def get_users(
 
     return users
 
+# call the default_admin funcation
+create_default_admin()
+
+@app.get("/me")
+def get_me(
+    current_user: User = Depends(get_current_user)
+):
+
+    return {
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.email,
+        "role": current_user.role
+    }
 @app.post("/login")
 def login(
-    user: LoginSchema,
+    form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
 
-    existing_user = get_user_by_email(
-        db,
-        user.email
-    )
+    existing_user = db.query(User).filter(
+        User.email == form_data.username
+    ).first()
 
     if not existing_user:
-
         raise HTTPException(
             status_code=401,
             detail="Invalid Email"
         )
 
     if not verify_password(
-        user.password,
+        form_data.password,
         existing_user.password
     ):
-
         raise HTTPException(
             status_code=401,
             detail="Invalid Password"
@@ -100,7 +116,8 @@ def login(
 
     access_token = create_access_token(
         data={
-            "sub": existing_user.email
+            "sub": existing_user.email,
+            "role": existing_user.role
         }
     )
 
@@ -108,12 +125,20 @@ def login(
         "access_token": access_token,
         "token_type": "bearer"
     }
+        
 @app.post("/admin/users")
-def create_employee(
+def create_User(
     user: UserCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(admin_only)
 ):
 
+    if current_user.role != "admin":
+
+        raise HTTPException(
+            status_code=403,
+            detail="Only admin allowed"
+    )
     existing_user = get_user_by_email(
         db,
         user.email
@@ -129,7 +154,7 @@ def create_employee(
     new_user = create_user(db, user)
 
     return {
-        "message": "Employee created successfully",
+        "message": "User created successfully",
         "user": new_user
     }
 
@@ -670,51 +695,51 @@ def get_client_demos(
 
     return demos
 
-@app.post("/deals", response_model=schemas.DealResponse)
+# @app.post("/deals", response_model=schemas.DealResponse)
 
-def create_new_deal(
-    deal: schemas.DealCreate,
-    db: Session = Depends(get_db)
-):
+# def create_new_deal(
+#     deal: schemas.DealCreate,
+#     db: Session = Depends(get_db)
+# ):
 
-    return crud.create_deal(db, deal)
+#     return crud.create_deal(db, deal)
 
-@app.get("/deals", response_model=list[schemas.DealResponse])
+# @app.get("/deals", response_model=list[schemas.DealResponse])
 
-def get_all_deals(
-    db: Session = Depends(get_db)
-):
+# def get_all_deals(
+#     db: Session = Depends(get_db)
+# ):
 
-    return crud.get_deals(db)
+#     return crud.get_deals(db)
 
-@app.get("/deals/{deal_id}", response_model=schemas.DealResponse)
+# @app.get("/deals/{deal_id}", response_model=schemas.DealResponse)
 
-def get_single_deal(
-    deal_id: int,
-    db: Session = Depends(get_db)
-):
+# def get_single_deal(
+#     deal_id: int,
+#     db: Session = Depends(get_db)
+# ):
 
-    return crud.get_deal(db, deal_id)
+#     return crud.get_deal(db, deal_id)
 
-@app.put("/deals/{deal_id}", response_model=schemas.DealResponse)
+# @app.put("/deals/{deal_id}", response_model=schemas.DealResponse)
 
-def update_existing_deal(
-    deal_id: int,
-    deal: schemas.DealCreate,
-    db: Session = Depends(get_db)
-):
+# def update_existing_deal(
+#     deal_id: int,
+#     deal: schemas.DealCreate,
+#     db: Session = Depends(get_db)
+# ):
 
-    return crud.update_deal(db, deal_id, deal)
+#     return crud.update_deal(db, deal_id, deal)
 
-@app.delete("/deals/{deal_id}")
+# @app.delete("/deals/{deal_id}")
 
-def delete_existing_deal(
-    deal_id: int,
-    db: Session = Depends(get_db)
-):
+# def delete_existing_deal(
+#     deal_id: int,
+#     db: Session = Depends(get_db)
+# ):
 
-    crud.delete_deal(db, deal_id)
+#     crud.delete_deal(db, deal_id)
 
-    return {
-        "message": "Deal deleted successfully"
-    }
+#     return {
+#         "message": "Deal deleted successfully"
+#     }

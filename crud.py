@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 from models import User,Client
 
 from auth_config import hash_password
-
+from database import SessionLocal
+from auth import ADMIN_EMAIL, ADMIN_PASSWORD
 
 def get_user_by_email(
     db: Session,
@@ -51,19 +52,30 @@ def get_user_by_email(
 #     db.refresh(db_user)
 #     return db_user
 def create_user(db: Session, user: User):
+
     truncated_password = user.password[:72]
+
     hashed_password = hash_password(truncated_password)
-    
+
     db_user = User(
+
         email=user.email,
+
         password=hashed_password,
-        name=user.name,  # ✅ ADD THIS - make sure UserCreate has a name field
-        # ... other fields
+
+        name=user.name,
+
+        role=user.role
     )
+
     db.add(db_user)
+
     db.commit()
+
     db.refresh(db_user)
+
     return db_user
+      
 def get_all_users(db: Session):
 
     return db.query(User).all()
@@ -135,7 +147,37 @@ def delete_client(db, client_id: int):
 
     return client
 
-    def create_deal(db: Session, deal: schemas.DealCreate):
+def create_default_admin():
+
+    db = SessionLocal()
+
+    existing_admin = db.query(User).filter(
+        User.email == ADMIN_EMAIL
+    ).first()
+
+    if not existing_admin:
+
+        admin_user = User(
+            name="Admin",
+            email=ADMIN_EMAIL,
+            password=hash_password(ADMIN_PASSWORD),
+            role="admin"
+        )
+
+        db.add(admin_user)
+
+        db.commit()
+
+        print("✅ Default admin created")
+
+    else:
+
+        print("✅ Admin already exists")
+
+    db.close()
+
+
+def create_deal(db: Session, deal: schemas.DealCreate):
 
     new_deal = models.Deal(
 

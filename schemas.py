@@ -10,6 +10,8 @@ class UserCreate(BaseModel):
 
     password: str
 
+    role: str = "user"
+
 class AdminLogin(BaseModel):
     email: str
     password: str
@@ -28,6 +30,8 @@ class UserResponse(BaseModel):
 
     email: EmailStr
 
+    role: str
+
     class Config:
 
         from_attributes = True
@@ -36,7 +40,7 @@ class ClientCreate(BaseModel):
     pharmacy_name: str
     contact_person: Optional[str] = None
     Mobile_No: str
-    email: Optional[str] = None
+    email: Optional[EmailStr] = None
     lead_source: Optional[str] = None
     address: Optional[str] = None
     city_id: int
@@ -85,7 +89,7 @@ class ClientResponse(BaseModel):
     pharmacy_name: str
     contact_person: Optional[str]
     Mobile_No: str
-    email: Optional[str]
+    email: Optional[EmailStr]
     lead_source: Optional[str] = None
     address: Optional[str] = None
     city_id: int
