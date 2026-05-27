@@ -80,6 +80,12 @@ def create_default_admin():
 
     db = SessionLocal()
 
+    if not ADMIN_EMAIL or not ADMIN_PASSWORD:
+
+        print("❌ ADMIN_EMAIL or ADMIN_PASSWORD missing")
+
+        return
+
     existing_admin = db.query(User).filter(
         User.email == ADMIN_EMAIL
     ).first()
@@ -89,9 +95,7 @@ def create_default_admin():
         admin_user = User(
             name="Admin",
             email=ADMIN_EMAIL,
-            password=hash_password(
-                ADMIN_PASSWORD
-            ),
+            password=hash_password(ADMIN_PASSWORD),
             role="admin"
         )
 
@@ -106,7 +110,6 @@ def create_default_admin():
         print("✅ Admin already exists")
 
     db.close()
-
 
 # =========================
 # CLIENT SECTION

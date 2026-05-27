@@ -96,7 +96,7 @@ class Client(Base):
         "User",
         back_populates="clients"
     )
-    created_by = Column(
+    created_by = Column(~
     Integer,
     ForeignKey("users.id")
     )
