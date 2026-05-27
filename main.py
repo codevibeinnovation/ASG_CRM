@@ -91,7 +91,7 @@ def root():
 
 def login(
 
-    user_data: schemas.LoginRequest,
+    user_data: schemas.LoginSchema,
 
     db: Session = Depends(get_db)
 ):
@@ -583,7 +583,25 @@ def delete_area(
     return {
         "message": "Area deleted successfully"
     }
+# =========================
+# GET AREAS BY CITY
+# =========================
 
+@app.get(
+    "/areas-by-city/{city_id}",
+    response_model=list[schemas.AreaResponse]
+)
+
+def get_areas_by_city(
+
+    city_id: int,
+
+    db: Session = Depends(get_db)
+):
+
+    return db.query(models.Area).filter(
+        models.Area.city_id == city_id
+    ).all()
 # =========================
 # CREATE EXISTING PRODUCT
 # ADMIN ONLY
