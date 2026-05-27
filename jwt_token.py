@@ -15,7 +15,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 from sqlalchemy.orm import Session
 
-from database import SessionLocal
+from database import SessionLocal,get_db
 
 from models import User
 
@@ -32,23 +32,6 @@ from auth import (
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="login"
 )
-
-
-# =========================
-# DATABASE
-# =========================
-
-def get_db():
-
-    db = SessionLocal()
-
-    try:
-
-        yield db
-
-    finally:
-
-        db.close()
 
 
 # =========================

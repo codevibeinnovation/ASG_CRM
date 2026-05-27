@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 from database import (
     SessionLocal,
     engine,
-    Base
+    Base,
+    get_db
 )
 
 import models
@@ -69,25 +70,6 @@ app.add_middleware(
 
     allow_headers=["*"]
 )
-
-
-# =========================
-# DATABASE
-# =========================
-
-def get_db():
-
-    db = SessionLocal()
-
-    try:
-
-        yield db
-
-    finally:
-
-        db.close()
-
-
 # =========================
 # ROOT
 # =========================
