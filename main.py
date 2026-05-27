@@ -6,8 +6,6 @@ from fastapi import (
 
 from fastapi.middleware.cors import CORSMiddleware
 
-from fastapi.security import OAuth2PasswordRequestForm
-
 from sqlalchemy.orm import Session
 
 from database import (
@@ -111,14 +109,14 @@ def root():
 
 def login(
 
-    form_data: OAuth2PasswordRequestForm = Depends(),
+    user_data: schemas.LoginRequest,
 
     db: Session = Depends(get_db)
 ):
 
     user = crud.get_user_by_email(
         db,
-        form_data.username
+        user_data.email
     )
 
     if not user:
@@ -129,7 +127,7 @@ def login(
         )
 
     if not verify_password(
-        form_data.password,
+        user_data.password,
         user.password
     ):
 
@@ -138,27 +136,50 @@ def login(
             detail="Invalid Password"
         )
 
-    token = create_access_token({
-
-        "sub": user.email,
-
-        "role": user.role,
-
-        "user_id": user.id
-    })
+    access_token = create_access_token(
+        data={
+            "sub": user.email,
+            "role": user.role,
+            "user_id": user.id
+        }
+    )
 
     return {
 
-        "access_token": token,
+        "access_token": access_token,
 
         "token_type": "bearer",
 
-        "role": user.role,
+        "user": {
 
-        "name": user.name
+            "id": user.id,
+
+            "name": user.name,
+
+            "email": user.email,
+
+            "role": user.role
+        }
     }
 
+@app.get("/me")
+def get_me(
 
+    current_user: User = Depends(get_current_user)
+
+):
+
+    return {
+
+        "id": current_user.id,
+
+        "name": current_user.name,
+
+        "email": current_user.email,
+
+        "role": current_user.role
+
+    }
 # =========================
 # CREATE USER
 # ADMIN ONLY
@@ -395,9 +416,8 @@ def create_city(
 
 def get_cities(
 
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db)
 
-    current_user: User = Depends(get_current_user)
 ):
 
     return crud.get_cities(db)
@@ -509,9 +529,8 @@ def create_area(
 
 def get_areas(
 
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db)
 
-    current_user: User = Depends(get_current_user)
 ):
 
     return crud.get_areas(db)
@@ -625,9 +644,8 @@ def create_existing_product(
 
 def get_existing_products(
 
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db)
 
-    current_user: User = Depends(get_current_user)
 ):
 
     return crud.get_existing_products(db)
