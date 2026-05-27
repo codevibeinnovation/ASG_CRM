@@ -5,6 +5,7 @@ from fastapi import (
 )
 
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordRequestForm
 
 from sqlalchemy.orm import Session
 
@@ -41,13 +42,6 @@ Base.metadata.create_all(bind=engine)
 
 
 # =========================
-# CREATE DEFAULT ADMIN
-# =========================
-
-crud.create_default_admin()
-
-
-# =========================
 # APP
 # =========================
 
@@ -81,7 +75,50 @@ def root():
     return {
         "message": "CRM Running Successfully"
     }
+# =========================
+# SIGNUP
+# =========================
 
+@app.post(
+    "/signup",
+    response_model=schemas.UserResponse
+)
+
+def signup(
+
+    user: schemas.UserCreate,
+
+    db: Session = Depends(get_db)
+):
+
+    # CHECK EMAIL EXISTS
+
+    existing_user = crud.get_user_by_email(
+
+        db,
+
+        user.email
+    )
+
+    if existing_user:
+
+        raise HTTPException(
+
+            status_code=400,
+
+            detail="Email already exists"
+        )
+
+    # CREATE USER
+
+    new_user = crud.create_user(
+
+        db,
+
+        user
+    )
+
+    return new_user
 
 # =========================
 # LOGIN
@@ -91,37 +128,49 @@ def root():
 
 def login(
 
-    user_data: schemas.LoginSchema,
+    form_data: OAuth2PasswordRequestForm = Depends(),
 
     db: Session = Depends(get_db)
 ):
 
     user = crud.get_user_by_email(
+
         db,
-        user_data.email
+
+        form_data.username
     )
 
     if not user:
 
         raise HTTPException(
+
             status_code=401,
+
             detail="Invalid Email"
         )
 
     if not verify_password(
-        user_data.password,
+
+        form_data.password,
+
         user.password
     ):
 
         raise HTTPException(
+
             status_code=401,
+
             detail="Invalid Password"
         )
 
     access_token = create_access_token(
+
         data={
+
             "sub": user.email,
+
             "role": user.role,
+
             "user_id": user.id
         }
     )
@@ -130,20 +179,9 @@ def login(
 
         "access_token": access_token,
 
-        "token_type": "bearer",
-
-        "user": {
-
-            "id": user.id,
-
-            "name": user.name,
-
-            "email": user.email,
-
-            "role": user.role
-        }
+        "token_type": "bearer"
     }
-
+    
 @app.get("/me")
 def get_me(
 

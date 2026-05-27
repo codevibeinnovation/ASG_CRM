@@ -70,46 +70,6 @@ def get_all_users(db: Session):
     return db.query(User).all()
 
 
-# =========================
-# DEFAULT ADMIN
-# =========================
-
-def create_default_admin():
-
-    from database import SessionLocal
-
-    db = SessionLocal()
-
-    if not ADMIN_EMAIL or not ADMIN_PASSWORD:
-
-        print("❌ ADMIN_EMAIL or ADMIN_PASSWORD missing")
-
-        return
-
-    existing_admin = db.query(User).filter(
-        User.email == ADMIN_EMAIL
-    ).first()
-
-    if not existing_admin:
-
-        admin_user = User(
-            name="Admin",
-            email=ADMIN_EMAIL,
-            password=hash_password(ADMIN_PASSWORD),
-            role="admin"
-        )
-
-        db.add(admin_user)
-
-        db.commit()
-
-        print("✅ Default admin created")
-
-    else:
-
-        print("✅ Admin already exists")
-
-    db.close()
 
 # =========================
 # CLIENT SECTION

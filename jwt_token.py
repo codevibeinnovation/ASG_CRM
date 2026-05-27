@@ -30,7 +30,7 @@ from auth import (
 # =========================
 
 oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="login"
+    tokenUrl="/login"
 )
 
 
